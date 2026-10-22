@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Generador de códigos QR</title>
+  <style>
+    :root {
+      --bg: #f1f5f9; --surface: #fff; --text: #0f172a; --muted: #64748b;
+      --primary: #2563eb; --border: #dbe2ea; --radius: 14px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 28px 16px 40px; background: var(--bg); color: var(--text);
+      font: 16px/1.45 Arial, Helvetica, sans-serif;
+    }
+    header { text-align: center; margin: 0 auto 28px; max-width: 850px; }
+    h1 { margin: 0 0 8px; font-size: clamp(1.8rem, 4vw, 2.6rem); }
+    header p { margin: 0; color: var(--muted); }
+    main { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(300px, .9fr); gap: 22px; max-width: 1180px; margin: auto; }
+    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 4px 16px #0f172a0a; padding: 24px; }
+    h2 { font-size: 1.15rem; margin: 0 0 18px; color: var(--primary); }
+    .section + .section { border-top: 1px solid var(--border); margin-top: 22px; padding-top: 22px; }
+    label, legend { display: block; font-weight: 700; margin-bottom: 8px; }
+    input[type="url"], input[type="text"], input[type="number"], select {
+      width: 100%; min-height: 42px; border: 1px solid var(--border); border-radius: 9px;
+      padding: 9px 11px; color: var(--text); background: white; font: inherit;
+    }
+    input:focus, select:focus, button:focus-visible { outline: 3px solid #2563eb35; outline-offset: 2px; }
+    small, .hint { color: var(--muted); }
+    .hint { font-size: .9rem; margin: 7px 0 0; }
+    fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+    .levels { display: grid; gap: 10px; }
+    .levels label { display: flex; align-items: flex-start; gap: 9px; font-weight: 400; margin: 0; }
+    .levels input { margin-top: 5px; accent-color: var(--primary); }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .control { margin-bottom: 17px; }
+    .range-row { display: grid; grid-template-columns: 1fr 84px; align-items: center; gap: 12px; }
+    input[type="range"] { width: 100%; accent-color: var(--primary); }
+    input[type="color"] { width: 42px; height: 40px; border: 1px solid var(--border); border-radius: 8px; background: white; padding: 3px; }
+    .color-row { display: flex; align-items: center; gap: 10px; }
+    .color-row input[type="text"] { flex: 1; min-width: 0; }
+    .check-row { display: flex; align-items: center; gap: 9px; margin: 8px 0 0; }
+    .check-row label { margin: 0; font-weight: 400; }
+    .actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 20px; }
+    button { border: 1px solid var(--border); border-radius: 10px; padding: 11px 16px; font: inherit; font-weight: 700; cursor: pointer; background: white; color: var(--text); }
+    button.primary { color: white; background: var(--primary); border-color: var(--primary); }
+    button:hover { filter: brightness(.97); }
+    .preview-panel { display: flex; flex-direction: column; align-items: center; }
+    .preview-panel h2 { align-self: flex-start; }
+    #qr-preview { width: 100%; min-height: 290px; display: grid; place-items: center; padding: 18px; }
+    #qr-preview svg { display: block; max-width: 100%; height: auto; box-shadow: 0 3px 16px #0f172a12; }
+    .empty { color: var(--muted); text-align: center; max-width: 300px; }
+    .status { margin-top: 12px; min-height: 24px; text-align: center; color: var(--muted); font-size: .9rem; }
+    .note { margin-top: 18px; padding: 13px 15px; background: #eff6ff; border-radius: 10px; color: #1d4ed8; font-size: .92rem; }
+    .error { color: #b91c1c; }
+    @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
+    @media (max-width: 480px) { body { padding: 20px 10px; } .panel { padding: 18px; } .grid2 { grid-template-columns: 1fr; gap: 0; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Generador de códigos QR</h1>
+    <p>Pega un enlace, ajusta los parámetros y descarga tu QR.</p>
+  </header>
+
+  <main>
+    <section class="panel" aria-label="Configuración del QR">
+      <div class="section">
+        <h2>1. Contenido</h2>
+        <label for="content">Enlace o texto</label>
+        <input id="content" type="text" value="https://www.ejemplo.com" placeholder="https://ejemplo.com" autocomplete="url">
+        <p class="hint">El contenido se codifica dentro del QR. Para enlaces, incluye https://.</p>
+      </div>
+
+      <div class="section">
+        <h2>2. Parámetros del QR</h2>
+        <div class="grid2">
+          <fieldset class="control">
+            <legend>Nivel de corrección</legend>
+            <div class="levels">
+              <label><input type="radio" name="level" value="L"> L — Bajo (~7%)</label>
+              <label><input type="radio" name="level" value="M" checked> M — Medio (~15%)</label>
+              <label><input type="radio" name="level" value="Q"> Q — Alto (~25%)</label>
+              <label><input type="radio" name="level" value="H"> H — Muy alto (~30%)</label>
+            </div>
+            <p class="hint">H recupera más daño, pero puede generar un QR más denso o grande.</p>
+          </fieldset>
+          <div>
+            <div class="control">
+              <label for="size">Tamaño de exportación</label>
+              <div class="range-row">
+                <input id="size" type="range" min="128" max="1024" step="32" value="512">
+                <input id="size-number" type="number" min="128" max="1024" step="32" value="512" aria-label="Tamaño en píxeles">
+              </div>
+              <p class="hint">128–1024 px. Cambia la resolución de salida, no la cantidad de datos.</p>
+            </div>
+            <div class="control">
+              <label for="margin">Margen blanco (quiet zone)</label>
+              <div class="range-row">
+                <input id="margin" type="range" min="0" max="50" step="1" value="4">
+                <input id="margin-number" type="number" min="0" max="50" step="1" value="4" aria-label="Margen en módulos">
+              </div>
+              <p class="hint">Se mide en módulos del QR. Se recomienda al menos 4.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>3. Estilo</h2>
+        <div class="grid2">
+          <div class="control">
+            <label for="fg">Color del QR</label>
+            <div class="color-row"><input id="fg" type="color" value="#000000" aria-label="Color del QR"><input id="fg-text" type="text" value="#000000" aria-label="Código hexadecimal del QR"></div>
+          </div>
+          <div class="control">
+            <label for="bg">Color de fondo</label>
+            <div class="color-row"><input id="bg" type="color" value="#ffffff" aria-label="Color de fondo"><input id="bg-text" type="text" value="#ffffff" aria-label="Código hexadecimal del fondo"></div>
+          </div>
+        </div>
+        <p class="hint">Para máxima compatibilidad, usa QR oscuro sobre fondo claro y evita poco contraste.</p>
+      </div>
+
+      <div class="actions">
+        <button id="generate" class="primary" type="button">Generar QR</button>
+        <button id="reset" type="button">Restablecer</button>
+      </div>
+    </section>
+
+    <section class="panel preview-panel" aria-label="Vista previa y descargas">
+      <h2>Vista previa</h2>
+      <div id="qr-preview"><p class="empty">El código QR aparecerá aquí.</p></div>
+      <div id="status" class="status" role="status" aria-live="polite"></div>
+      <div class="actions">
+        <button id="download-png" class="primary" type="button" disabled>Descargar PNG</button>
+        <button id="download-svg" type="button" disabled>Descargar SVG</button>
+      </div>
+      <div class="note"><strong>PNG:</strong> práctico para documentos y uso general.<br><strong>SVG:</strong> vectorial, ideal para impresión y escalado sin pérdida.</div>
+    </section>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+  <script>
+    const $ = id => document.getElementById(id);
+    let currentSvg = '';
+    let currentMatrix = null;
+
+    function selectedLevel() {
+      return document.querySelector('input[name="level"]:checked').value;
+    }
+
+    function clampNumber(input, min, max) {
+      const value = Number(input.value);
+      return Math.max(min, Math.min(max, Number.isFinite(value) ? value : min));
+    }
+
+    function syncRange(rangeId, numberId, min, max) {
+      const range = $(rangeId), number = $(numberId);
+      range.addEventListener('input', () => { number.value = range.value; generateQR(); });
+      number.addEventListener('change', () => {
+        number.value = clampNumber(number, min, max);
+        range.value = number.value;
+        generateQR();
+      });
+    }
+
+    function validHex(value) {
+      return /^#[0-9a-fA-F]{6}$/.test(value);
+    }
+
+    function syncColor(colorId, textId) {
+      $(colorId).addEventListener('input', () => {
+        $(textId).value = $(colorId).value;
+        generateQR();
+      });
+      $(textId).addEventListener('change', () => {
+        const value = $(textId).value.trim();
+        if (validHex(value)) {
+          $(colorId).value = value;
+          generateQR();
+        } else {
+          $(textId).value = $(colorId).value;
+          setStatus('Usa un color hexadecimal válido, por ejemplo #2563eb.', true);
+        }
+      });
+    }
+
+    function setStatus(message, isError = false) {
+      $('status').textContent = message;
+      $('status').classList.toggle('error', isError);
+    }
+
+    function generateQR() {
+      const text = $('content').value.trim();
+      if (!text) {
+        $('qr-preview').innerHTML = '<p class="empty">Pega un enlace o texto para generar el QR.</p>';
+        $('download-png').disabled = $('download-svg').disabled = true;
+        currentSvg = '';
+        currentMatrix = null;
+        setStatus('Falta el contenido.');
+        return;
+      }
+      if (typeof qrcode !== 'function') {
+        setStatus('No se pudo cargar la biblioteca QR. Comprueba tu conexión a Internet.', true);
+        return;
+      }
+      try {
+        const qr = qrcode(0, selectedLevel());
+        qr.addData(text, 'Byte');
+        qr.make();
+        const size = clampNumber($('size-number'), 128, 1024);
+        const margin = clampNumber($('margin-number'), 0, 50);
+        const fg = $('fg').value;
+        const bg = $('bg').value;
+        currentSvg = qr.createSvgTag(1, margin, {
+          cellColor: fg,
+          margin: margin,
+          scalable: true,
+          alt: 'Código QR'
+        });
+
+        currentSvg = currentSvg.replace('<svg ', '<svg style="background:' + bg + '" ');
+        const preview = $('qr-preview');
+        preview.innerHTML = currentSvg;
+        const svg = preview.querySelector('svg');
+        svg.setAttribute('width', size);
+        svg.setAttribute('height', size);
+        svg.style.width = Math.min(size, 420) + 'px';
+        svg.style.height = 'auto';
+        svg.style.background = bg;
+        // Guarda una versión con dimensiones explícitas para exportar.
+        const exportSvg = qr.createSvgTag(1, margin, {
+          cellColor: fg, margin: margin, scalable: false, alt: 'Código QR'
+        });
+        const doc = new DOMParser().parseFromString(exportSvg, 'image/svg+xml');
+        const root = doc.documentElement;
+        root.setAttribute('width', size);
+        root.setAttribute('height', size);
+        root.setAttribute('viewBox', root.getAttribute('viewBox') || ('0 0 ' + size + ' ' + size));
+        const rect = doc.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('width', '100%');
+        rect.setAttribute('height', '100%');
+        rect.setAttribute('fill', bg);
+        root.insertBefore(rect, root.firstChild);
+
+        currentSvg = new XMLSerializer().serializeToString(root);
+        currentMatrix = { qr, size, margin, fg, bg };
+        $('download-png').disabled = $('download-svg').disabled = false;
+        setStatus('QR generado · corrección ' + selectedLevel() + ' · ' + size + ' px de exportación.');
+      } catch (error) {
+        currentSvg = '';
+        currentMatrix = null;
+        $('download-png').disabled = $('download-svg').disabled = true;
+        setStatus('No se pudo generar el QR. Prueba un nivel de corrección menor o reduce el texto.', true);
+      }
+    }
+
+    function downloadBlob(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    function downloadSVG() {
+      if (!currentSvg || !currentMatrix) return;
+      downloadBlob(new Blob([currentSvg], { type: 'image/svg+xml;charset=utf-8' }), 'codigo-qr.svg');
+    }
+
+    function downloadPNG() {
+      if (!currentSvg || !currentMatrix) return;
+      const { size, bg } = currentMatrix;
+      const blob = new Blob([currentSvg], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = bg;
+        ctx.fillRect(0, 0, size, size);
+        ctx.drawImage(img, 0, 0, size, size);
+        URL.revokeObjectURL(url);
+        canvas.toBlob(png => {
+          if (png) downloadBlob(png, 'codigo-qr.png');
+          else setStatus('No se pudo exportar el PNG.', true);
+        }, 'image/png');
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        setStatus('Error al preparar el PNG. Intenta descargar el SVG.', true);
+      };
+      img.src = url;
+    }
+
+    $('generate').addEventListener('click', generateQR);
+    $('download-svg').addEventListener('click', downloadSVG);
+    $('download-png').addEventListener('click', downloadPNG);
+    $('content').addEventListener('input', generateQR);
+    document.querySelectorAll('input[name="level"]').forEach(el => el.addEventListener('change', generateQR));
+    syncRange('size', 'size-number', 128, 1024);
+    syncRange('margin', 'margin-number', 0, 50);
+    syncColor('fg', 'fg-text');
+    syncColor('bg', 'bg-text');
+
+    $('reset').addEventListener('click', () => {
+      $('content').value = 'https://www.ejemplo.com';
+      document.querySelector('input[name="level"][value="M"]').checked = true;
+      $('size').value = $('size-number').value = 512;
+      $('margin').value = $('margin-number').value = 4;
+      $('fg').value = $('fg-text').value = '#000000';
+      $('bg').value = $('bg-text').value = '#ffffff';
+      generateQR();
+    });
+
+    generateQR();
+  </script>
+</body>
+</html>
